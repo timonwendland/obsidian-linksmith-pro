@@ -18,12 +18,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/Timandilu/obsidian-linksmith-pro.git"
+		"url": "git+https://github.com/timonwendland/obsidian-linksmith-pro.git"
 	},
 	"bugs": {
-		"url": "https://github.com/Timandilu/obsidian-linksmith-pro/issues"
+		"url": "https://github.com/timonwendland/obsidian-linksmith-pro/issues"
 	},
-	"homepage": "https://github.com/Timandilu/obsidian-linksmith-pro#readme",
+	"homepage": "https://github.com/timonwendland/obsidian-linksmith-pro#readme",
 	"devDependencies": {
 		"@eslint/js": "^9.39.5",
 		"@eslint/json": "^0.14.0",

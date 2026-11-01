@@ -46,7 +46,7 @@ Use `linksmith: ignore` to leave the note out of the index completely. `linksmit
 2. Search for **Linksmith Pro**.
 3. Select **Install**, then **Enable**.
 
-To install it by hand, download `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases/latest) into `.obsidian/plugins/linksmith-pro/` in your vault, then reload Obsidian. Every release file is built by GitHub Actions and carries a build attestation, so you can check where it came from with `gh attestation verify main.js --repo Timandilu/obsidian-linksmith-pro`.
+To install it by hand, download `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases/latest) into `.obsidian/plugins/linksmith-pro/` in your vault, then reload Obsidian. Every release file is built by GitHub Actions and carries a build attestation, so you can check where it came from with `gh attestation verify main.js --repo timonwendland/obsidian-linksmith-pro`.
 
 ## Privacy
 
