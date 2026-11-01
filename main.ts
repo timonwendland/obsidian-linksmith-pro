@@ -15,6 +15,12 @@ import {
 import { meetsMinimumTriggerCharacters } from './src/trigger';
 import { normalizeSettings } from './src/settings-data';
 import { LinksmithSettingTab } from './src/settings-tab';
+import {
+	getLinksmithExcludedTerms,
+	hasLinksmithDirective,
+	isLinksmithExcludedTerm,
+	matchesAnyRegex,
+} from './src/exclusions';
 
 // ============================================================================
 // INTERFACES & TYPES
@@ -232,7 +238,11 @@ class Indexer {
 		}
 
 		// Index headings
-		if (cache.headings && this.plugin.settings.suggestHeadingsEnabled) {
+		if (
+			cache.headings &&
+			this.plugin.settings.suggestHeadingsEnabled &&
+			!hasLinksmithDirective(cache.frontmatter, 'ignore-headings')
+		) {
 			const headings: HeadingEntry[] = [];
 
 			for (const h of cache.headings) {
@@ -275,6 +285,9 @@ class Indexer {
 
 	shouldIndexFile(file: TFile): boolean {
 		const settings = this.plugin.settings;
+		const cache = this.plugin.app.metadataCache.getFileCache(file);
+
+		if (hasLinksmithDirective(cache?.frontmatter, 'ignore')) return false;
 
 		// Check excluded files
 		if (settings.excludedFiles.includes(file.path)) return false;
@@ -285,7 +298,6 @@ class Indexer {
 		}
 
 		// Check excluded tags
-		const cache = this.plugin.app.metadataCache.getFileCache(file);
 		if (cache?.tags) {
 			const fileTags = cache.tags.map((t) => t.tag);
 			for (const excludedTag of settings.excludedTags) {
@@ -294,9 +306,8 @@ class Indexer {
 		}
 
 		// Check title patterns
-		for (const pattern of settings.excludedTitlePatterns) {
-			if (new RegExp(pattern).test(file.basename)) return false;
-		}
+		if (matchesAnyRegex(file.basename, settings.excludedTitlePatterns))
+			return false;
 
 		return true;
 	}
@@ -311,11 +322,7 @@ class Indexer {
 			return false;
 		}
 
-		for (const pattern of settings.excludedHeadingPatterns) {
-			if (new RegExp(pattern).test(heading)) return false;
-		}
-
-		return true;
+		return !matchesAnyRegex(heading, settings.excludedHeadingPatterns);
 	}
 
 	updateFile(file: TFile): void {
@@ -888,22 +895,28 @@ class RetroEngine {
 
 	buildSearchTargets(currentFile: TFile): SearchTarget[] {
 		const targets: SearchTarget[] = [];
+		const cache = this.plugin.app.metadataCache.getFileCache(currentFile);
+		const excludedTerms = getLinksmithExcludedTerms(cache?.frontmatter);
+		const isExcludedTerm = (term: string) =>
+			isLinksmithExcludedTerm(term, excludedTerms);
 
 		// Add all note titles
 		for (const [path, note] of this.plugin.indexer.noteIndex.entries()) {
 			// Don't link to self
 			if (path === currentFile.path) continue;
 
-			targets.push({
-				searchText: note.title,
-				path: path,
-				kind: 'note',
-				displayTitle: note.title,
-			});
+			if (!isExcludedTerm(note.title)) {
+				targets.push({
+					searchText: note.title,
+					path: path,
+					kind: 'note',
+					displayTitle: note.title,
+				});
+			}
 
 			// Add all aliases for this note
 			for (const alias of note.aliases) {
-				if (alias && alias.length >= 3) {
+				if (alias && alias.length >= 3 && !isExcludedTerm(alias)) {
 					targets.push({
 						searchText: alias,
 						path: path,
@@ -921,7 +934,11 @@ class RetroEngine {
 			headings,
 		] of this.plugin.indexer.headingIndex.entries()) {
 			for (const h of headings) {
-				if (h.heading && h.heading.length >= 3) {
+				if (
+					h.heading &&
+					h.heading.length >= 3 &&
+					!isExcludedTerm(h.heading)
+				) {
 					targets.push({
 						searchText: h.heading,
 						path: path,

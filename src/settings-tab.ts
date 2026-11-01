@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type { SettingDefinitionGroup, SettingDefinitionRender } from 'obsidian';
 import type LinksmithPlugin from '../main';
+import { findInvalidRegex } from './exclusions';
 
 type SettingsRow = Omit<SettingDefinitionRender, 'render'> & {
 	render(setting: Setting): void;
@@ -16,6 +17,33 @@ export class LinksmithSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: LinksmithPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	private addRegexSetting(
+		setting: Setting,
+		patterns: string[],
+		apply: (patterns: string[]) => void,
+	): void {
+		setting.addTextArea((text) =>
+			text.setValue(patterns.join(', ')).onChange(async (value) => {
+				const nextPatterns = value
+					.split(',')
+					.map((pattern) => pattern.trim())
+					.filter(Boolean);
+				const invalidPattern = findInvalidRegex(nextPatterns);
+				const message = invalidPattern
+					? `Invalid regular expression: ${invalidPattern}`
+					: '';
+				text.inputEl.setCustomValidity(message);
+				if (invalidPattern) {
+					text.inputEl.reportValidity();
+					return;
+				}
+				apply(nextPatterns);
+				await this.plugin.saveSettings();
+				await this.plugin.indexer.build();
+			}),
+		);
 	}
 
 	getSettingDefinitions(): SettingsSection[] {
@@ -399,22 +427,13 @@ export class LinksmithSettingTab extends PluginSettingTab {
 						name: 'Excluded title patterns',
 						desc: 'Comma-separated regex patterns for titles to exclude',
 						render: (setting) => {
-							setting.addTextArea((text) =>
-								text
-									.setValue(
-										this.plugin.settings.excludedTitlePatterns.join(
-											', ',
-										),
-									)
-									.onChange(async (value) => {
-										this.plugin.settings.excludedTitlePatterns =
-											value
-												.split(',')
-												.map((s) => s.trim())
-												.filter((s) => s.length > 0);
-										await this.plugin.saveSettings();
-										await this.plugin.indexer.build();
-									}),
+							this.addRegexSetting(
+								setting,
+								this.plugin.settings.excludedTitlePatterns,
+								(patterns) => {
+									this.plugin.settings.excludedTitlePatterns =
+										patterns;
+								},
 							);
 						},
 					},
@@ -422,22 +441,13 @@ export class LinksmithSettingTab extends PluginSettingTab {
 						name: 'Excluded heading patterns',
 						desc: 'Comma-separated regex patterns for headings to exclude',
 						render: (setting) => {
-							setting.addTextArea((text) =>
-								text
-									.setValue(
-										this.plugin.settings.excludedHeadingPatterns.join(
-											', ',
-										),
-									)
-									.onChange(async (value) => {
-										this.plugin.settings.excludedHeadingPatterns =
-											value
-												.split(',')
-												.map((s) => s.trim())
-												.filter((s) => s.length > 0);
-										await this.plugin.saveSettings();
-										await this.plugin.indexer.build();
-									}),
+							this.addRegexSetting(
+								setting,
+								this.plugin.settings.excludedHeadingPatterns,
+								(patterns) => {
+									this.plugin.settings.excludedHeadingPatterns =
+										patterns;
+								},
 							);
 						},
 					},

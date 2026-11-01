@@ -37,10 +37,13 @@ function obsidianStubPlugin() {
 							constructor(type, setting) {
 								this.type = type;
 								this.setting = setting;
+								this.inputEl = this;
 							}
 							setValue(value) { this.value = value; return this; }
 							setLimits(min, max, step) { this.limits = [min, max, step]; return this; }
 							setButtonText(value) { this.buttonText = value; return this; }
+							setCustomValidity(value) { this.validityMessage = value; }
+							reportValidity() { this.reportValidityCalls = (this.reportValidityCalls || 0) + 1; }
 							onChange(callback) { this.change = callback; return this; }
 							onClick(callback) { this.click = callback; return this; }
 						}
@@ -235,8 +238,25 @@ test('settings definitions and legacy display expose all controls without a DOM'
 	]);
 	assert.deepEqual(calls, { save: 4, build: 2 });
 
+	await control('Excluded title patterns').change('^Archive, [broken');
+	assert.deepEqual(plugin.settings.excludedTitlePatterns, ['TODO']);
+	assert.equal(
+		control('Excluded title patterns').validityMessage,
+		'Invalid regular expression: [broken',
+	);
+	assert.equal(control('Excluded title patterns').reportValidityCalls, 1);
+	assert.deepEqual(calls, { save: 4, build: 2 });
+
+	await control('Excluded title patterns').change('^Archive, Draft$');
+	assert.deepEqual(plugin.settings.excludedTitlePatterns, [
+		'^Archive',
+		'Draft$',
+	]);
+	assert.equal(control('Excluded title patterns').validityMessage, '');
+	assert.deepEqual(calls, { save: 5, build: 3 });
+
 	await control('Rebuild index').click();
-	assert.deepEqual(calls, { save: 4, build: 3 });
+	assert.deepEqual(calls, { save: 5, build: 4 });
 	assert.deepEqual(state.notices, [
 		'Rebuilding index...',
 		'Index rebuilt successfully',
